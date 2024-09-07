@@ -1,11 +1,9 @@
-import { ReactNode, useState } from "react";
-import { toast, ToastContainer } from "react-toastify";
+import { useEffect, useState } from "react";
+import { RestaurantPost } from "../types/restaurantsPost";
+import { Food } from "../types/food";
 
 export interface IRestaurantForm {
-  foodsApi: {
-    id: string,
-    name: string
-  }[];
+  foodsApi: Food[];
 }
 
 export default function RestaurantForm ( { foodsApi } :IRestaurantForm) {
@@ -14,35 +12,52 @@ export default function RestaurantForm ( { foodsApi } :IRestaurantForm) {
     const [num, setNum] = useState<string>('');
     const [region, setRegion] = useState<string>('');
     const [avaliation, setAvaliation] = useState<number | undefined>(undefined);
-    const [foods, setFoods] = useState<string[]>();
+    const [foods, setFoods] = useState<Food[]>();
     const [error, setError] = useState(false);
-    const [counterInput, setCounterInput] = useState<number>(1);
     
-    const handleFood = (food: string): void => {
-      setFoods((prevFoods) => {
-        const updateFoods: string[] = prevFoods ? [...prevFoods] : [];
-        const indexMatchFood: number = updateFoods.indexOf(food.trim());
-        if (indexMatchFood != -1) {
-          updateFoods[indexMatchFood] = food.trim();
-        } else {
-          updateFoods.push(food.trim());
+    const handleFood = (food: Food ): void => {
+      setFoods((prevFoods) => {      
+        const updateFoods: Food[] = prevFoods ? [...prevFoods] : [];
+        const isFoodAlreadySelected: boolean = updateFoods.some(f => f.id === food.id); 
+        if (!isFoodAlreadySelected) {
+          food.name.trim();
+          updateFoods.push(food);
         } 
         return updateFoods;
-      });
+      });       
     };
-    const addInput = (): void => {
-      setCounterInput((prev) => prev + 1);
-    }
-    const deleteInput = (): void => {
-      setCounterInput((prev) => prev - 1);
-    }
 
-    let quantityInputs: number[] = Array.from({ length: counterInput }, (_, i) => i + 1 )
-
+    async function fetchRestaurant(restaurant: RestaurantPost ) {
+      const request = await fetch('http://localhost:3000/api/restaurant/', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(restaurant)
+      });
+      const res = await request.json();
+      console.log({res});
+    };
+    
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      const userData = { name, street, num, region, avaliation, foods };
-      console.log(userData);
+
+      const userData = { 
+        userIds:["459ba75c-f302-46c4-97f5-835fe9bbc4bb"], 
+        name, 
+        street, 
+        num, 
+        region, 
+        avaliation, 
+        foodType: foods?.map(food => food.id) };
+
+      if (!userData.name) {
+        setError(true);
+        alert('erro')
+        return
+
+      } 
+      fetchRestaurant(userData);
     }
     return (
         <>
@@ -99,13 +114,19 @@ export default function RestaurantForm ( { foodsApi } :IRestaurantForm) {
           </div>
 
           <label className="block text-gray-700">Tipos de comida</label>
-          <select className="border border-gray-400" name="foods" id="foods-select">
+          <select 
+          className="border border-gray-400" 
+          name="foods" 
+          onChange={(e) => { 
+            const selectedFood = foodsApi.find(food => food.name === e.target.value)
+            if (selectedFood) handleFood(selectedFood);
+          }}
+          id="foods-select">
             {foodsApi.map((food, i) => {
               return (
                 <option 
                 key={i} 
                 value={food.name}
-                onClick={() => handleFood(food.name)}
                 > {food.name}</option>    
             )
             })}
@@ -117,7 +138,7 @@ export default function RestaurantForm ( { foodsApi } :IRestaurantForm) {
                 <span 
                 key={i} 
                 className="w- border border-green-500 rounded-full text-green-500 px-2"
-                >{food}</span>) }
+                >{food.name}</span>) }
 
             </div>
           </div>
